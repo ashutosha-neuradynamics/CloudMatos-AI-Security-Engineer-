@@ -17,14 +17,12 @@ app = FastAPI(
     version="1.0.0",
     docs_url="/docs",
     redoc_url="/redoc",
-    openapi_url="/openapi.json"
+    openapi_url="/openapi.json",
 )
 
 # CORS configuration
-cors_origins = os.getenv(
-    "CORS_ORIGINS",
-    "http://localhost:3000,http://localhost:3001"
-).split(",")
+frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
+cors_origins = [frontend_url]
 
 app.add_middleware(
     CORSMiddleware,
@@ -50,17 +48,10 @@ async def health_check():
 @app.exception_handler(404)
 async def not_found_handler(request, exc):
     """Handle 404 errors."""
-    return JSONResponse(
-        status_code=404,
-        content={"detail": "Not found"}
-    )
+    return JSONResponse(status_code=404, content={"detail": "Not found"})
 
 
 @app.exception_handler(500)
 async def internal_error_handler(request, exc):
     """Handle 500 errors."""
-    return JSONResponse(
-        status_code=500,
-        content={"detail": "Internal server error"}
-    )
-
+    return JSONResponse(status_code=500, content={"detail": "Internal server error"})
