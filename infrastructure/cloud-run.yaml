@@ -1,72 +1,20 @@
-# Google Cloud Run configuration for Prompt Firewall
-# This is a template for deploying the backend service
-#
-# Before deploying, replace the following placeholders:
-# - PROJECT_ID: Your GCP project ID
-# - YOUR_FRONTEND_URL: Your frontend URL (or leave empty if not needed)
-# - CLOUDSQL_CONNECTION_NAME: Your Cloud SQL connection name (format: PROJECT_ID:REGION:INSTANCE_NAME)
-
-apiVersion: serving.knative.dev/v1
-kind: Service
-metadata:
-  name: prompt-firewall-backend
-  annotations:
-    run.googleapis.com/ingress: all
-    run.googleapis.com/execution-environment: gen2
-    # Cloud SQL connection - replace CLOUDSQL_CONNECTION_NAME with your actual connection name
-    # Format: PROJECT_ID:REGION:INSTANCE_NAME (e.g., my-project:us-central1:prompt-firewall-db)
-    run.googleapis.com/cloudsql-instances: promptfirewall:us-east1:promptfirewall
-spec:
-  template:
-    metadata:
-      annotations:
-        autoscaling.knative.dev/minScale: "0"
-        autoscaling.knative.dev/maxScale: "10"
-        run.googleapis.com/cpu-throttling: "true"
-        run.googleapis.com/memory: "512Mi"
-        run.googleapis.com/cpu: "1"
-    spec:
-      containerConcurrency: 80
-      timeoutSeconds: 300
-      containers:
-      - image: gcr.io/promptfirewall/prompt-firewall-backend:latest
-        ports:
-        - name: http1
-          containerPort: 8080
-        env:
-        - name: DATABASE_URL
-          valueFrom:
-            secretKeyRef:
-              name: database-url
-              key: latest
-        - name: SECRET_KEY
-          valueFrom:
-            secretKeyRef:
-              name: secret-key
-              key: latest
-        - name: CORS_ORIGINS
-          value: "https://YOUR_FRONTEND_URL"
-        resources:
-          limits:
-            cpu: "1000m"
-            memory: "512Mi"
-          requests:
-            cpu: "100m"
-            memory: "256Mi"
-        startupProbe:
-          httpGet:
-            path: /v1/health
-            port: 8080
-          initialDelaySeconds: 0
-          timeoutSeconds: 240
-          periodSeconds: 240
-          failureThreshold: 1
-        livenessProbe:
-          httpGet:
-            path: /v1/health
-            port: 8080
-          initialDelaySeconds: 0
-          timeoutSeconds: 1
-          periodSeconds: 3
-          failureThreshold: 3
-
+steps:
+# Build the image
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['build', '-t', 'LOCATION-docker.pkg.dev/PROJECT_ID/REPOSITORY/IMAGE/SERVICE_NAME:$COMMIT_SHA', '.']
+# Push the image to Artifact Registry
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['push', 'LOCATION-docker.pkg.dev/PROJECT_ID/REPOSITORY/IMAGE/SERVICE_NAME:$COMMIT_SHA']
+# Deploy image to Cloud Run
+- name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+  entrypoint: gcloud
+  args: 
+    - 'run'
+    - 'deploy'
+    - 'SERVICE_NAME'
+    - '--image'
+    - 'LOCATION-docker.pkg.dev/PROJECT_ID/REPOSITORY/IMAGE/SERVICE_NAME:$COMMIT_SHA'
+    - '--region'
+    - 'SERVICE_REGION'
+images:
+- 'LOCATION-docker.pkg.dev/PROJECT_ID/REPOSITORY/IMAGE/SERVICE_NAME:$COMMIT_SHA'
