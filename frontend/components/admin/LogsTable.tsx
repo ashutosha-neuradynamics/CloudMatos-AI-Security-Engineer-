@@ -97,33 +97,95 @@ export default function LogsTable({ filters }: LogsTableProps) {
 
   const handleExport = async (format: 'json' | 'csv') => {
     try {
-      const data = await apiClient.getLogs({
-        ...filters,
-        limit: 1000,
-        offset: 0,
-        format,
-      });
-      
-      if (format === 'csv') {
-        const blob = new Blob([data as string], { type: 'text/csv' });
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `logs-${new Date().toISOString().split('T')[0]}.csv`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        window.URL.revokeObjectURL(url);
+      const hasTypeOrSeverity = Boolean(filters?.type || filters?.severity);
+
+      if (hasTypeOrSeverity) {
+        // Client-side export when type/severity is used to avoid backend JSON LIKE error
+        const { type, severity, ...rest } = filters || {};
+        const response = await apiClient.getLogs({
+          ...rest,
+          limit: 1000,
+          offset: 0,
+          format: 'json',
+        }) as LogsResponse;
+
+        const filtered = response.logs.filter((log) => {
+          const risks = log.risks || [];
+          const typeOk = type ? risks.some((r) => r.type === type) : true;
+          const severityOk = severity ? risks.some((r) => r.severity === severity) : true;
+          return typeOk && severityOk;
+        });
+
+        if (format === 'csv') {
+          // Mirror backend CSV shape: id, request_id, timestamp, decision, risk_count
+          const header = 'id,request_id,timestamp,decision,risk_count\n';
+          const rows = filtered.map((log) => {
+            const cols = [
+              String(log.id),
+              `"${log.request_id}"`,
+              `"${log.timestamp}"`,
+              `"${log.decision}"`,
+              String(log.risks?.length ?? 0),
+            ];
+            return cols.join(',');
+          });
+          const csv = header + rows.join('\n');
+          const blob = new Blob([csv], { type: 'text/csv' });
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `logs-${new Date().toISOString().split('T')[0]}.csv`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          window.URL.revokeObjectURL(url);
+        } else {
+          const blob = new Blob([JSON.stringify({
+            logs: filtered,
+            total: filtered.length,
+            limit: filtered.length,
+            offset: 0,
+            has_more: false,
+          }, null, 2)], { type: 'application/json' });
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `logs-${new Date().toISOString().split('T')[0]}.json`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          window.URL.revokeObjectURL(url);
+        }
       } else {
-        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `logs-${new Date().toISOString().split('T')[0]}.json`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        window.URL.revokeObjectURL(url);
+        // Server-side export when no problematic filters are present
+        const data = await apiClient.getLogs({
+          ...filters,
+          limit: 1000,
+          offset: 0,
+          format,
+        });
+        
+        if (format === 'csv') {
+          const blob = new Blob([data as string], { type: 'text/csv' });
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `logs-${new Date().toISOString().split('T')[0]}.csv`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          window.URL.revokeObjectURL(url);
+        } else {
+          const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `logs-${new Date().toISOString().split('T')[0]}.json`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          window.URL.revokeObjectURL(url);
+        }
       }
     } catch (err) {
       alert('Failed to export logs');
