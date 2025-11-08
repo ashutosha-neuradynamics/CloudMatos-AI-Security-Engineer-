@@ -18,6 +18,38 @@ The Prompt Firewall is designed to:
 - **SDK**: Python SDK for easy integration
 - **Infrastructure**: Terraform for IaC
 
+## 🛠️ Tech Stack
+
+### Backend
+- **Language**: Python 3.11+
+- **Framework**: FastAPI 0.104+
+- **Database**: PostgreSQL 15 (via SQLAlchemy 2.0)
+- **ORM**: SQLAlchemy
+- **Migrations**: Alembic
+- **Authentication**: JWT (python-jose)
+- **Password Hashing**: bcrypt (passlib)
+- **Container**: Docker
+
+### Frontend
+- **Framework**: Next.js 16
+- **Language**: TypeScript
+- **UI Library**: React 19
+- **Styling**: Tailwind CSS 4
+- **Deployment**: Vercel
+
+### Infrastructure
+- **Compute**: Google Cloud Run (serverless containers)
+- **Database**: Google Cloud SQL (PostgreSQL)
+- **Secrets**: Google Secret Manager
+- **Container Registry**: Google Container Registry
+- **IaC**: Terraform
+- **CI/CD**: Cloud Build (optional)
+
+### SDK
+- **Language**: Python 3.8+
+- **HTTP Client**: httpx
+- **Package Manager**: setuptools
+
 ## 📁 Project Structure
 
 ```
@@ -137,8 +169,13 @@ The Prompt Firewall is designed to:
 - [Requirements](memory-bank/features/feature-prompt-firewall/requirements.md)
 - [Implementation Plan](memory-bank/features/feature-prompt-firewall/implementation_plan.md)
 - [Deployment Guide](DEPLOY.md) - Complete deployment instructions
-- [SDK Documentation](sdk/README.md) - Python SDK usage
-- API Documentation: Available at `/docs` when backend is running (Swagger UI)
+- [Architecture Diagram](docs/architecture.md) - System architecture and data flow
+- [Threat Model](docs/threat-model.md) - Security threats, risks, and mitigations
+- [SDK Documentation](sdk/README.md) - Python SDK usage and integration examples
+- **API Documentation**: 
+  - Swagger UI: Available at `/docs` endpoint (production: https://cloudmatos-ai-security-engineer-803270031211.europe-west1.run.app/docs)
+  - OpenAPI JSON: Available at `/openapi.json` endpoint
+  - ReDoc: Available at `/redoc` endpoint
 
 ## 🧪 Testing
 
@@ -159,6 +196,61 @@ npm test
 - `PUT /v1/policy` - Update policy rules (admin)
 - `GET /v1/logs` - Fetch logs with filtering
 - `GET /v1/health` - Health check
+
+### API Documentation
+
+- **Swagger UI**: Available at `/docs` endpoint
+- **ReDoc**: Available at `/redoc` endpoint
+- **OpenAPI JSON**: Available at `/openapi.json` endpoint
+
+**Production API Documentation:**
+- Backend API Docs: https://cloudmatos-ai-security-engineer-803270031211.europe-west1.run.app/docs
+
+## ☁️ Cloud Configuration
+
+### Production Deployment
+
+The application is deployed in a cloud-native architecture:
+
+#### Backend Service
+- **Platform**: Google Cloud Platform (GCP) Cloud Run
+- **Deployment**: Docker container image
+- **Region**: Europe-West1
+- **Scaling**: Auto-scaling serverless containers (0-10 instances)
+- **API URL**: https://cloudmatos-ai-security-engineer-803270031211.europe-west1.run.app
+- **API Documentation**: https://cloudmatos-ai-security-engineer-803270031211.europe-west1.run.app/docs
+
+#### Database
+- **Service**: Google Cloud SQL
+- **Database Engine**: PostgreSQL 15
+- **Connection**: Private IP connection from Cloud Run
+- **Backup**: Automated daily backups enabled
+
+#### Frontend Service
+- **Platform**: Vercel
+- **Framework**: Next.js
+- **URL**: https://cloud-matos-ai-security-engineer-xr.vercel.app/
+- **Features**: Automatic deployments, CDN, SSL/TLS
+
+#### Infrastructure Components
+- **Secrets Management**: Google Secret Manager (database credentials, JWT secrets)
+- **Container Registry**: Google Container Registry (Docker images)
+- **Monitoring**: Cloud Logging and Cloud Monitoring
+
+
+### Integration Example
+
+**5-Line SDK Integration:**
+```python
+from prompt_firewall_sdk import PromptFirewallClient
+client = PromptFirewallClient(base_url="http://localhost:8000")
+result = client.query(prompt="My email is user@example.com")
+if result['decision'] == 'block':
+    raise ValueError("Request blocked by firewall")
+print(result['explanation'])
+```
+
+See [SDK Documentation](sdk/README.md) for more examples.
 
 ## 🔒 Security Features
 
